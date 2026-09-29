@@ -9,3 +9,8 @@ scripts/
 *.err
 *.out
 *.pkl
+exemplos_plantas/*.pdf
+/*.png
+/*.jpg
+/pdf_inspection.txt
+/README.md
