@@ -68,6 +68,7 @@ Uma feição sem georreferenciamento comprovado permanece em coordenadas da pág
 ## Testes automatizados
 
 ```powershell
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt   # pytest e playwright, só para desenvolvimento
 .venv\Scripts\python.exe -m pytest tests -q
 ```
 

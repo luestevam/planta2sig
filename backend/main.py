@@ -17,8 +17,14 @@ from . import agent_jobs
 from .document_tools import slug
 
 ROOT=Path(__file__).resolve().parents[1]
-DATA=Path(os.getenv('GEODOC_DATA',str(ROOT/'data')))
-DATA.mkdir(parents=True,exist_ok=True)
+def _data_dir():
+    d=Path(os.getenv('GEODOC_DATA',str(ROOT/'data')))
+    try:
+        d.mkdir(parents=True,exist_ok=True); return d
+    except OSError:      # read-only deploy (e.g. serverless): fall back to temporary storage
+        import tempfile
+        d=Path(tempfile.gettempdir())/'geodoc-data'; d.mkdir(parents=True,exist_ok=True); return d
+DATA=_data_dir()
 LOCK=threading.RLock()
 app=FastAPI(title='GeoDoc SIG • Módulo 01')
 

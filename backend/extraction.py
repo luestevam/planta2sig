@@ -1,4 +1,4 @@
-import hashlib, re, json
+import hashlib, re, json, os
 from pathlib import Path
 import pymupdf as fitz
 import numpy as np
@@ -9,7 +9,7 @@ from shapely.geometry import Point, Polygon, mapping
 from .geometry import polygon, page_geometry, reconstruct, affine, transform, area_check
 from .examples import PROFILES,PDF_HASH
 
-CACHE_DIR=Path(__file__).resolve().parents[1]/'.cache'   # extraction of a given file hash is deterministic
+CACHE_DIR=Path(os.getenv('GEODOC_CACHE',str(Path(__file__).resolve().parents[1]/'.cache')))   # extraction of a given file hash is deterministic
 
 CATEGORIES=['perimetro','quadra','lote','via','construcao','ponto','limite','hidrografia']
 

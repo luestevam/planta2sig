@@ -1,0 +1,11 @@
+.venv/
+data/
+.cache/
+scratch/
+screenshots/
+tests/
+scripts/
+*.log
+*.err
+*.out
+*.pkl
