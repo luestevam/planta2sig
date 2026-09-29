@@ -437,4 +437,14 @@ def export_project(pid:str,fmt:str,layers:str|None=None,types:str|None=None):
     return Response(data,media_type=mime,headers={'Content-Disposition':f'attachment; filename="camadas-revisadas.{ext}"'})
 
 
-app.mount('/',StaticFiles(directory=ROOT/'frontend',html=True),name='frontend')
+@app.get('/api/health')
+def health():
+    import sys
+    return {'ok':True,'python':sys.version.split()[0],'data_dir':str(DATA),'frontend':(ROOT/'frontend').is_dir(),'examples':(ROOT/'exemplos_plantas').is_dir()}
+
+
+if (ROOT/'frontend').is_dir():
+    app.mount('/',StaticFiles(directory=ROOT/'frontend',html=True),name='frontend')
+else:      # some hosts only ship the Python files: keep the API alive instead of crashing at import
+    @app.get('/')
+    def no_frontend(): return {'service':'GeoDoc SIG','frontend':'não incluído neste deploy','health':'/api/health','docs':'/docs'}
