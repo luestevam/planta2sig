@@ -137,7 +137,7 @@ def pdf_profile(p,pix,result):
 def _pdf_lots(p,geo,result,outdir=None):
     import json as _json
     from . import pdf_lots
-    cache=CACHE_DIR/f'{result["sha256"]}-lots-v4.json'
+    cache=CACHE_DIR/f'{result["sha256"]}-lots-v5.json'
     if cache.exists(): runs=_json.loads(cache.read_text(encoding='utf8'))
     else:
         runs=pdf_lots.extract_all(p.parent.name,geo['matrix'])

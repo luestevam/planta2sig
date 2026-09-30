@@ -1,0 +1,15 @@
+.venv/
+.git/
+data/
+.cache/
+scratch/
+screenshots/
+tests/
+__pycache__/
+.pytest_cache/
+*.pkl
+*.log
+*.err
+*.out
+/*.png
+/*.jpg

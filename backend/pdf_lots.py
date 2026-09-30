@@ -7,8 +7,6 @@ Every polygon is checked against the area table printed on the sheet before it i
 import re
 import numpy as np
 import cv2
-from scipy import ndimage as ndi
-from skimage.segmentation import watershed
 from shapely.geometry import Polygon, MultiPoint, Point
 from shapely.validation import make_valid
 
@@ -67,6 +65,55 @@ def labels(page):
     return lots, quads
 
 
+def flood(edt, markers, step=0.5):
+    """Seeded flooding from the middle of each cell (highest distance-to-wall) outwards, in bands of `step` pixels.
+    Same idea as a marker-controlled watershed on -edt, but only NumPy/OpenCV so the deploy stays small.
+    Only the moving front is touched, so the cost grows with the number of pixels assigned, not with the image."""
+    H, W = edt.shape
+    Wp = W + 2
+    q = np.full((H + 2, Wp), -1, np.int32)          # -1 border: never flooded, no bounds checks needed
+    q[1:-1, 1:-1] = np.floor(edt / step)
+    lab = np.zeros((H + 2, Wp), np.int32)
+    lab[1:-1, 1:-1] = markers
+    qf, lf = q.ravel(), lab.ravel()
+    offs = np.array([1, -1, Wp, -Wp])
+    pend = {}                                        # band -> proposals waiting for their band to be reached
+
+    def propose(pos, labels):
+        p = (pos[:, None] + offs[None, :]).ravel()
+        l = np.repeat(labels, 4)
+        m = (qf[p] >= 0) & (lf[p] == 0)
+        return p[m], l[m]
+
+    def stash(p, l, level):
+        band = qf[p]
+        now = band >= level
+        later = ~now
+        if later.any():
+            for lv in np.unique(band[later]):
+                m = later & (band == lv)
+                pend.setdefault(int(lv), []).append((p[m], l[m]))
+        return p[now], l[now]
+
+    seeds = np.flatnonzero(lf)
+    qmax = int(qf.max())
+    cur_p, cur_l = stash(*propose(seeds, lf[seeds]), qmax)
+    for level in range(qmax, -1, -1):
+        if level in pend:
+            ps = [cur_p] + [x[0] for x in pend[level]]
+            ls = [cur_l] + [x[1] for x in pend.pop(level)]
+            cur_p, cur_l = np.concatenate(ps), np.concatenate(ls)
+        while len(cur_p):
+            keep = lf[cur_p] == 0
+            cur_p, cur_l = cur_p[keep], cur_l[keep]
+            if not len(cur_p): break
+            cur_p, first = np.unique(cur_p, return_index=True)
+            cur_l = cur_l[first]
+            lf[cur_p] = cur_l
+            cur_p, cur_l = stash(*propose(cur_p, cur_l), level)
+    return lab[1:-1, 1:-1]
+
+
 def _long(mask, min_len):
     n, lab, st, _ = cv2.connectedComponentsWithStats(mask.astype(np.uint8), connectivity=8)
     keep = np.zeros(n, bool)
@@ -102,7 +149,7 @@ def extract(page, to_world, crs_meters_factor=1.0, **wall_params):
     wall, road, (H, W) = walls_and_roads(page, **wall_params)
     wall &= ~road.astype(bool)
     free = ~(wall | road.astype(bool))
-    edt = ndi.distance_transform_edt(free).astype(np.float32)
+    edt = cv2.distanceTransform(free.astype(np.uint8), cv2.DIST_L2, cv2.DIST_MASK_PRECISE)
     markers = np.zeros((H, W), np.int32)
     markers[road.astype(bool)] = ROAD
     pts = np.array([c for _, c, _ in lots]) * S
@@ -116,7 +163,7 @@ def extract(page, to_world, crs_meters_factor=1.0, **wall_params):
         # seed = the printed number's box (grown slightly), so a stray stroke next to the centre cannot enclose it
         x0, y0, x1, y1 = (int(v * S) for v in bb)
         cv2.rectangle(markers, (x0 - 2, y0 - 2), (x1 + 2, y1 + 2), LOT0 + i, -1)
-    ws = watershed(-edt, markers)
+    ws = flood(edt, markers)
     del edt
     res = dict(lots=[], blocks=[], perimeter=None, rejected=[], table=table, declared=declared)
     lot_mask = ws >= LOT0

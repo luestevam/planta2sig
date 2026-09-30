@@ -9,5 +9,3 @@ numpy>=2,<3
 pillow>=11,<13
 opencv-python-headless>=4.10,<6
 httpx>=0.28,<1
-scikit-image>=0.24,<1
-scipy>=1.13,<2
